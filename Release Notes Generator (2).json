@@ -1,0 +1,233 @@
+{
+  "name": "Release Notes Generator",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        -192
+      ],
+      "id": "96038ad9-103c-4d66-91d5-adbd26972f63",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/repos/triveni-2008/Advance-four-wheeler/commits",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -96,
+        -192
+      ],
+      "id": "9ae3e38f-53e5-447b-91f9-a72f3c7d4667",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const commit = item.json;\n\n  return {\n    json: {\n      commit_message: commit.commit?.message || \"\",\n      author: commit.commit?.author?.name || \"\",\n      date: commit.commit?.author?.date || \"\",\n      commit_id: commit.sha || \"\"\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        -192
+      ],
+      "id": "463185fd-53dc-4f48-ad50-ce69bb9b68ec",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const internalKeywords = [\n  \"refactor\",\n  \"rename variable\",\n  \"rename internal\",\n  \"internal\",\n  \"cleanup\",\n  \"code cleanup\",\n  \"formatting\",\n  \"lint\",\n  \"test\",\n  \"tests\",\n  \"unit test\",\n  \"dependency update\",\n  \"upgrade dependency\",\n  \"chore\"\n];\n\nconst output = [];\n\nfor (const item of $input.all()) {\n  const message = item.json.commit_message || \"\";\n  const lowerMessage = message.toLowerCase();\n\n  const isInternal = internalKeywords.some(keyword =>\n    lowerMessage.includes(keyword)\n  );\n\n  if (!isInternal) {\n    output.push({\n      json: {\n        commit_message: message,\n        author: item.json.author,\n        date: item.json.date,\n        commit_id: item.json.commit_id,\n        type: \"user-facing\"\n      }\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -192
+      ],
+      "id": "97e289d5-1f03-43ff-b8d3-54d01eb79137",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5.6-luna",
+          "mode": "list",
+          "cachedResultName": "GPT-5.6-LUNA"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "Convert this Git commit message into one simple user-facing release note.\n\nGit commit message:\n{{$json.commit_message}}\n\nWrite only one short release note sentence.\nDo not explain the code.\nDo not mention developers, internal technical details, or commit IDs."
+            },
+            {}
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        528,
+        -192
+      ],
+      "id": "c0b23cc3-9a28-48fd-a8a6-8671eb219937",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const notes = $input.all()\n  .map(item => item.json.output?.[0]?.content?.[0]?.text || \"\")\n  .filter(Boolean);\n\nreturn [\n  {\n    json: {\n      changelog: notes.join(\"\\n\\n\")\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -192
+      ],
+      "id": "1a1f2f43-c256-4fa2-9707-8478c4914f66",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const changelog = $json.changelog || \"\";\n\nconst cleanedNotes = changelog\n  .replace(/\\\\n\\\\n/g, \"\\n\\n\")\n  .split(\"\\n\\n\")\n  .filter(note => note.trim() !== \"\")\n  .filter(note => !note.toLowerCase().includes(\"please provide the git commit message\"));\n\nreturn [{\n  json: {\n    changelog: cleanedNotes.join(\"\\n\\n\")\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -192
+      ],
+      "id": "55afce5e-b0e6-4ddb-acf6-c88b9d8d9f70",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "sendTo": "pulitriveni008@gmail.com",
+        "subject": "Release Notes Generator",
+        "message": "={{$json.changelog}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        -192
+      ],
+      "id": "48a4af69-5d84-47a7-8298-24b5478f8e8b",
+      "name": "Send a message",
+      "webhookId": "fe33bf82-9ed2-4287-96e6-924287c4d444",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "eplC823QzCtct8R8",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "25256c38-ca86-482d-9022-0f7ed4ac0d94",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e1e9f161d19cfae5cdca755ba8f89ef83ad6deba84a962c5cfee19d2680efb86"
+  },
+  "nodeGroups": [],
+  "id": "VsLDU9uo493Z5462",
+  "tags": []
+}
